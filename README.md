@@ -1,51 +1,75 @@
 # java-docker-cli
 
-A minimal Docker example demonstrating how to containerize a simple Java CLI application using a multi-stage build.
+A small Java CLI for quick text and file operations, packaged in a multi-stage Docker image.
+This project is meant to be simple, useful, and easy to extend as a base for more advanced CLI tools.
 
-## What's inside
+## Features
 
-This project contains:
-- **HelloWorld.java** — A simple Java CLI program that accepts command-line arguments
-- **Dockerfile** — Multi-stage Docker build that compiles Java and creates a lean runtime image
-- **.dockerignore** — Build context exclusions (Git files, documentation)
+- `count <file>`: counts lines, words and characters
+- `search <pattern> <file>`: prints matching lines using a regular expression
+- `replace <pattern> <replacement> <file>`: replaces matches and prints the result
+- `history [limit]`: shows recent commands executed by the CLI
 
-## Building the image
+## Project structure
+
+- `src/main/java/org/textcli`: Java source code for the CLI
+- `pom.xml`: Maven configuration
+- `Dockerfile`: multi-stage Docker build
+- `samples/`: example files for local testing
+- `data/`: persistent history folder when mounted as a Docker volume
+
+## Build locally
 
 ```bash
-docker build -t java-hello-world .
+mvn package
+java -jar target/textcli.jar --help
 ```
 
-## Running the container
+## Run locally
 
-Run with default output:
 ```bash
-docker run java-hello-world
+java -jar target/textcli.jar count samples/example.txt
+java -jar target/textcli.jar search "foo" samples/example.txt
+java -jar target/textcli.jar replace "foo" "BAR" samples/example.txt
+java -jar target/textcli.jar history
 ```
 
-Output:
-```
-Hello, World!
-```
+## Build the Docker image
 
-Run with a custom argument:
 ```bash
-docker run java-hello-world Alice
+docker build -t textcli .
 ```
 
-Output:
+## Run in Docker
+
+```bash
+docker run --rm -v "$(pwd)/data:/data" -v "$(pwd)/samples:/samples" textcli count /samples/example.txt
 ```
-Hello, Alice!
+
+```bash
+docker run --rm -v "$(pwd)/data:/data" -v "$(pwd)/samples:/samples" textcli search "foo" /samples/example.txt
 ```
+
+```bash
+docker run --rm -v "$(pwd)/data:/data" -v "$(pwd)/samples:/samples" textcli replace "foo" "BAR" /samples/example.txt
+```
+
+```bash
+docker run --rm -v "$(pwd)/data:/data" textcli history
+```
+
+The `--rm` flag removes the container after the command finishes, which fits the one-shot nature of this CLI.
 
 ## How it works
 
-The Dockerfile uses a two-stage build process:
+The Dockerfile uses two stages:
 
-1. **Build stage** — Uses `eclipse-temurin:21-jdk-alpine` to compile `HelloWorld.java` into bytecode
-2. **Runtime stage** — Uses the smaller `eclipse-temurin:21-jre-alpine` image and copies only the compiled `.class` file
+1. Build stage: Maven compiles the project and packages it into a JAR file.
+2. Runtime stage: a lean Java runtime image executes the JAR as a non-root user.
 
-This approach keeps the final image size small by excluding the JDK and source files from the runtime container.
+This keeps the final image small while still being usable for real CLI tasks.
 
 ## License
 
 MIT
+
